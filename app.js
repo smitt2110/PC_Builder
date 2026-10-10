@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <small>${getProducts(id).length} available</small>
         </button>
       `).join("")}
-      <hr style="border-color:var(--b);margin:14px 0">
+      <hr style="borderl-color:var(--b);margin:14px 0">
       <h3>Component Catalog</h3>
       <input id="cf-search" class="sel"
              placeholder="Search components..." />
