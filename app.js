@@ -496,13 +496,17 @@ function renderFPS() {
     <p>${resolution} · ${preset} settings</p>
     <div style="font-size:32px;font-weight:800;color:var(--a)">
       ${estimatedFPS} FPS
+
     </div>
     <p class="est">Approximate estimate only. Actual FPS varies by CPU,
     game version, drivers, ray tracing, upscaling and other settings.</p>
   `;
 }
+
+// Calculate button listener — outside renderFPS()
 document.getElementById("fps-calculate")
   ?.addEventListener("click", renderFPS);
+
 function categoryOfKey(key) {
   return categoryOf({ category: key, type: key, name: key });
 }
