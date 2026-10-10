@@ -131,6 +131,16 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCatalog();
   }
 
+function renderRight() {
+  const right = document.getElementById("cf-right");
+  if (!right) return;
+
+  right.innerHTML = `
+    <h3>Selected Build</h3>
+    <p class="est">Choose components from the catalog on the left.</p>
+  `;
+}
+
   function renderCatalog() {
     const container = $("#cf-catalog");
     if (!container) return;
