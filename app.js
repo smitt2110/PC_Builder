@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let previousX = 0;
   let previousY = 0;
   let rotationY = -0.45;
-  let rotationX = 0.12;
+  let rotationX = 0;
   let cameraDistance = 7;
   let rgbHue = 0;
   let parts = {};
@@ -600,7 +600,7 @@ function categoryOfKey(key) {
         })
       );
       floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -0.03;
+      floor.position.y = -2;
       scene.add(floor);
 
       pcGroup = new THREE.Group();
