@@ -508,13 +508,13 @@ canvas.addEventListener("pointermove", (event) => {
     const cameraRight = new THREE.Vector3(1, 0, 0)
       .applyQuaternion(camera.quaternion)
       .normalize();
-    const yaw = new THREE.Quaternion().setFromAxisAngle(worldUp, dx * 0.01);
-    const pitch = new THREE.Quaternion().setFromAxisAngle(cameraRight, dy * 0.01);
+    const yaw = new THREE.Quaternion().setFromAxisAngle(worldUp, dx * 0.005);
+    const pitch = new THREE.Quaternion().setFromAxisAngle(cameraRight, dy * 0.005);
 
     pcGroup.quaternion.premultiply(yaw).premultiply(pitch).normalize();
   } else {
-    cameraYaw -= dx * 0.01;
-    cameraPitch = Math.max(-0.7, Math.min(0.7, cameraPitch + dy * 0.006));
+    cameraYaw -= dx * 0.005;
+    cameraPitch = Math.max(-0.7, Math.min(0.7, cameraPitch + dy * 0.003));
     updateCamera();
   }
 });
