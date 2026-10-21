@@ -13,7 +13,7 @@ h3{margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;co
 .cat small{color:var(--m);display:block}.cat .n{font-weight:600}.cat.on{border-color:var(--a)}
 .ok{color:var(--a)}.wn{color:var(--w)}.er{color:var(--e)}
 #vp{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--b);background:radial-gradient(circle at 50% 30%,#1a2530,#0b0d10)}
-#cv{width:100%;height:100%;display:block;touch-action:none;cursor:move}#cv.is-over-model{cursor:grab}#cv.is-dragging-model{cursor:grabbing}#cv.is-dragging-view{cursor:move}
+#cv{width:100%;height:100%;display:block;touch-action:none;cursor:grab}#cv.is-dragging{cursor:grabbing}
 #bar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:rgba(20,24,29,.8);backdrop-filter:blur(8px);border:1px solid var(--b);border-radius:12px;padding:8px}
 #bar label{font-size:12px;color:var(--m);display:flex;align-items:center;gap:6px}
 #info{position:absolute;top:10px;left:10px;background:rgba(20,24,29,.85);border:1px solid var(--a);border-radius:10px;padding:8px 12px;max-width:260px;display:none}

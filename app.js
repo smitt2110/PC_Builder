@@ -206,7 +206,6 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="row"><span>Estimated total</span><strong class="ok">${money(total)}</strong></div>
       <p class="est">Prices are snapshots, not live prices.</p>
       <h3 style="margin-top:18px">Build Status</h3><div id="cf-status"></div>
-      <button id="cf-clear" style="width:100%;margin-top:12px">Clear Build</button>
       <h3 style="margin-top:20px">Gaming FPS Estimator</h3>
       <label for="fps-game">Game</label><select id="fps-game" class="sel">${Object.keys(fpsGameBase).map(game => `<option>${esc(game)}</option>`).join("")}</select>
       <label for="fps-gpu">Graphics Card</label><select id="fps-gpu" class="sel"><option value="build">Use GPU from my build</option>${getProducts("GPU").map(product => `<option value="${esc(product.id)}">${esc(nameOf(product))}</option>`).join("")}</select>
@@ -219,12 +218,17 @@ document.addEventListener("DOMContentLoaded", () => {
       delete selected[button.dataset.remove]; selectedId = null;
       renderLeft(); renderRight(); update3D();
     }));
-    $("#cf-clear").addEventListener("click", () => {
-      Object.keys(selected).forEach(key => delete selected[key]); selectedId = null;
-      renderLeft(); renderRight(); update3D(); notify("Build cleared");
-    });
     $("#fps-calculate").addEventListener("click", calculateFPS);
     renderStatus();
+  }
+
+  function clearBuild() {
+    Object.keys(selected).forEach(key => delete selected[key]);
+    selectedId = null;
+    renderLeft();
+    renderRight();
+    update3D();
+    notify("Build cleared; default case restored");
   }
 
   const fpsGameBase = { "Cyberpunk 2077":48,"GTA V Enhanced":75,"Red Dead Redemption 2":58,"Hogwarts Legacy":50,"Forza Horizon 5":80,"Call of Duty: Warzone":75,"Counter-Strike 2":180,"Valorant":240,"Fortnite":100,"Black Myth: Wukong":38 };
@@ -420,8 +424,6 @@ document.addEventListener("DOMContentLoaded", () => {
       info.textContent = "3D engine unavailable. Showing the static PC case preview.";
       return;
     }
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
@@ -461,42 +463,22 @@ document.addEventListener("DOMContentLoaded", () => {
       resize3D();
 
 
-let dragMode = null;
+let isDraggingView = false;
 let dragStartX = 0;
 let dragStartY = 0;
-
-function hitTestModel(clientX, clientY) {
-  if (!camera || !pcGroup) return false;
-  const rect = canvas.getBoundingClientRect();
-  if (!rect.width || !rect.height) return false;
-
-  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObject(pcGroup, true).length > 0;
-}
-
-function updateCanvasCursor(clientX, clientY) {
-  canvas.classList.toggle("is-over-model", hitTestModel(clientX, clientY));
-}
 
 canvas.addEventListener("pointerdown", (event) => {
   if (event.button !== 0 || !event.isPrimary) return;
 
-  dragMode = hitTestModel(event.clientX, event.clientY) ? "model" : "view";
+  isDraggingView = true;
   dragStartX = event.clientX;
   dragStartY = event.clientY;
-  canvas.classList.remove("is-over-model");
-  canvas.classList.toggle("is-dragging-model", dragMode === "model");
-  canvas.classList.toggle("is-dragging-view", dragMode === "view");
+  canvas.classList.add("is-dragging");
   canvas.setPointerCapture(event.pointerId);
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  if (!dragMode) {
-    updateCanvasCursor(event.clientX, event.clientY);
-    return;
-  }
+  if (!isDraggingView) return;
 
   const dx = event.clientX - dragStartX;
   const dy = event.clientY - dragStartY;
@@ -504,34 +486,22 @@ canvas.addEventListener("pointermove", (event) => {
   dragStartX = event.clientX;
   dragStartY = event.clientY;
 
-  if (dragMode === "model") {
-    const worldUp = new THREE.Vector3(0, 1, 0);
-    const cameraRight = new THREE.Vector3(1, 0, 0)
-      .applyQuaternion(camera.quaternion)
-      .normalize();
-    const yaw = new THREE.Quaternion().setFromAxisAngle(worldUp, dx * 0.005);
-    const pitch = new THREE.Quaternion().setFromAxisAngle(cameraRight, dy * 0.005);
-
-    pcGroup.quaternion.premultiply(yaw).premultiply(pitch).normalize();
-  } else {
-    cameraYaw -= dx * 0.005;
-    cameraPitch = Math.max(-0.7, Math.min(0.7, cameraPitch + dy * 0.003));
-    updateCamera();
-  }
+  cameraYaw -= dx * 0.005;
+  cameraPitch = Math.max(-0.7, Math.min(0.7, cameraPitch + dy * 0.003));
+  updateCamera();
 });
 
 canvas.addEventListener("pointerup", (event) => {
   if (canvas.hasPointerCapture(event.pointerId)) {
     canvas.releasePointerCapture(event.pointerId);
   }
-  dragMode = null;
-  canvas.classList.remove("is-dragging-model", "is-dragging-view");
-  updateCanvasCursor(event.clientX, event.clientY);
+  isDraggingView = false;
+  canvas.classList.remove("is-dragging");
 });
 
 canvas.addEventListener("pointercancel", () => {
-  dragMode = null;
-  canvas.classList.remove("is-dragging-model", "is-dragging-view");
+  isDraggingView = false;
+  canvas.classList.remove("is-dragging");
 });
 
       canvas.addEventListener("wheel", (event) => {
@@ -756,19 +726,6 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
       group.add(mesh);
       return mesh;
     };
-    const addFan = (x, y, radius, material = glow) => {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(radius, 0.045, 8, 32), material
-      );
-      ring.position.set(x, y, 0.86);
-      group.add(ring);
-      const hub = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius * 0.24, radius * 0.24, 0.045, 20), dark
-      );
-      hub.rotation.x = Math.PI / 2;
-      hub.position.set(x, y, 0.865);
-      group.add(hub);
-    };
     const addSlats = (orientation, count, material = solid) => {
       for (let i = 0; i < count; i++) {
         if (orientation === "vertical") {
@@ -783,9 +740,9 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
 
     switch (design.style) {
       case "argb":
-        addFan(-0.43, 2.45, 0.34);
-        addFan(0.43, 1.15, 0.34);
         addBox([0.05, 2.7, 0.04], [-0.9, 1.8, 0.86], solid, -0.08);
+        addBox([0.08, 0.08, 0.04], [-0.66, 0.42, 0.86], glow);
+        addBox([0.08, 0.08, 0.04], [0.66, 3.18, 0.86], glow);
         break;
       case "vertical-mesh":
         addSlats("vertical", 13);
@@ -796,17 +753,14 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
         addBox([1.9, 0.06, 0.05], [0, 0.22, 0.87], glow);
         break;
       case "twin-fans":
-        addFan(0, 2.55, 0.48);
-        addFan(0, 1.05, 0.48);
+        addSlats("horizontal", 9, solid);
+        addBox([0.09, 3.1, 0.04], [0.82, 1.8, 0.87], glow);
         break;
       case "triple-fans":
-        addFan(0, 2.85, 0.32);
-        addFan(0, 1.8, 0.32);
-        addFan(0, 0.75, 0.32);
+        addSlats("vertical", 11, solid);
+        addBox([1.9, 0.07, 0.04], [0, 1.8, 0.87], glow);
         break;
       case "digital":
-        addFan(-0.48, 1.45, 0.34);
-        addFan(0.35, 1.45, 0.34);
         addBox([0.62, 0.25, 0.08], [0.45, 2.95, 0.88], dark);
         addBox([0.42, 0.035, 0.025], [0.45, 2.95, 0.93], glow);
         addSlats("vertical", 7, dark);
@@ -818,8 +772,8 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
         }
         break;
       case "wide-fans":
-        addFan(-0.48, 1.8, 0.43);
-        addFan(0.48, 1.8, 0.43);
+        addSlats("horizontal", 7, solid);
+        addBox([0.08, 2.8, 0.04], [-0.78, 1.8, 0.87], glow);
         break;
       case "compact-glass":
         caseGroup.scale.set(0.94, 0.96, 0.94);
@@ -831,9 +785,7 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
         break;
       case "mesh-argb":
         addSlats("vertical", 9, dark);
-        addFan(0, 2.75, 0.28);
-        addFan(0, 1.8, 0.28);
-        addFan(0, 0.85, 0.28);
+        addBox([1.9, 0.06, 0.04], [0, 1.8, 0.87], glow);
         break;
     }
   }
@@ -1066,24 +1018,8 @@ if (parts.caseRear) {
     notify("Screenshot saved");
   });
 
-  $("#bSaved")?.addEventListener("click", () => {
-    try {
-      const data = JSON.stringify(selected, null, 2);
-      const blob = new Blob([data], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "coreforge-build.json";
-      link.click();
-      URL.revokeObjectURL(url);
-      notify("Build exported");
-    } catch (error) {
-      console.error(error);
-      notify("Could not export build");
-    }
-  });
-
   const buildDialog = $("#build-dialog");
+  $("#bClear")?.addEventListener("click", clearBuild);
   $("#bBuild")?.addEventListener("click", () => {
     $("#build-budget").value = "";
     $("#build-budget-error").textContent = "";
