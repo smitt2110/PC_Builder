@@ -485,7 +485,8 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       );
       floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -2;
+      // The case panels reach y=0 at their bottom edge; align the floor there.
+      floor.position.y = 0;
       scene.add(floor);
 
       pcGroup = new THREE.Group();
@@ -707,10 +708,6 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
       hub.rotation.x = Math.PI / 2;
       rotor.add(hub);
     }
-
-    // Floor shadow-style base
-    box(pcGroup, [2.5, 0.08, 1.8], [0, 0.08, 0],
-      darkMaterial, "base");
 
     // Make internal parts visible through the front side
     [
