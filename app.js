@@ -50,8 +50,6 @@ document.addEventListener("DOMContentLoaded", () => {
     distance: Math.hypot(5, 7),
     targetY: 1.5
   };
-  let modelRotationY = 0;
-  let modelRotationX = 0;
   let cameraYaw = cameraHome.yaw;
   let cameraPitch = cameraHome.pitch;
   let cameraDistance = cameraHome.distance;
@@ -423,7 +421,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
-
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
@@ -467,24 +464,38 @@ let dragMode = null;
 let dragStartX = 0;
 let dragStartY = 0;
 
-canvas.addEventListener("pointerdown", (event) => {
+function hitTestModel(clientX, clientY) {
+  if (!camera || !pcGroup) return false;
   const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return false;
 
-  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
+  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(pcGroup, true);
+  return raycaster.intersectObject(pcGroup, true).length > 0;
+}
 
-  dragMode = hits.length ? "model" : "view";
+function updateCanvasCursor(clientX, clientY) {
+  canvas.classList.toggle("is-over-model", hitTestModel(clientX, clientY));
+}
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0 || !event.isPrimary) return;
+
+  dragMode = hitTestModel(event.clientX, event.clientY) ? "model" : "view";
   dragStartX = event.clientX;
   dragStartY = event.clientY;
-
+  canvas.classList.remove("is-over-model");
+  canvas.classList.toggle("is-dragging-model", dragMode === "model");
+  canvas.classList.toggle("is-dragging-view", dragMode === "view");
   canvas.setPointerCapture(event.pointerId);
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  if (!dragMode) return;
+  if (!dragMode) {
+    updateCanvasCursor(event.clientX, event.clientY);
+    return;
+  }
 
   const dx = event.clientX - dragStartX;
   const dy = event.clientY - dragStartY;
@@ -493,11 +504,14 @@ canvas.addEventListener("pointermove", (event) => {
   dragStartY = event.clientY;
 
   if (dragMode === "model") {
-    modelRotationY += dx * 0.01;
-    modelRotationX = Math.max(-0.7, Math.min(0.7, modelRotationX + dy * 0.006));
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const cameraRight = new THREE.Vector3(1, 0, 0)
+      .applyQuaternion(camera.quaternion)
+      .normalize();
+    const yaw = new THREE.Quaternion().setFromAxisAngle(worldUp, dx * 0.01);
+    const pitch = new THREE.Quaternion().setFromAxisAngle(cameraRight, dy * 0.01);
 
-    pcGroup.rotation.y = modelRotationY;
-    pcGroup.rotation.x = modelRotationX;
+    pcGroup.quaternion.premultiply(yaw).premultiply(pitch).normalize();
   } else {
     cameraYaw -= dx * 0.01;
     cameraPitch = Math.max(-0.7, Math.min(0.7, cameraPitch + dy * 0.006));
@@ -510,10 +524,13 @@ canvas.addEventListener("pointerup", (event) => {
     canvas.releasePointerCapture(event.pointerId);
   }
   dragMode = null;
+  canvas.classList.remove("is-dragging-model", "is-dragging-view");
+  updateCanvasCursor(event.clientX, event.clientY);
 });
 
 canvas.addEventListener("pointercancel", () => {
   dragMode = null;
+  canvas.classList.remove("is-dragging-model", "is-dragging-view");
 });
 
       canvas.addEventListener("wheel", (event) => {
@@ -686,6 +703,21 @@ function update3D() {
 
   const exploded = Number($("#ex")?.value || 0) / 100;
 
+  // Keep the interior empty until the matching part is selected in the catalog.
+  const partVisibility = {
+    motherboard: Boolean(selected.Motherboard),
+    cpu: Boolean(selected.CPU),
+    gpu: Boolean(selected.GPU),
+    gpuLight: Boolean(selected.GPU),
+    ram1: Boolean(selected.RAM),
+    ram2: Boolean(selected.RAM),
+    ssd: Boolean(selected.SSD),
+    psu: Boolean(selected.PSU)
+  };
+  Object.entries(partVisibility).forEach(([part, visible]) => {
+    if (parts[part]) parts[part].visible = visible;
+  });
+
   // 1. MOVE THE CASE BACKWARD AND UPWARD
  
 // Move all six case panels in different directions
@@ -777,7 +809,8 @@ if (parts.caseRear) {
       exploded * 3.5
     );
 
-    rgbGroup.visible = $("#rgb")?.checked ?? true;
+    // The RGB toggle controls lighting only; selecting a fan always shows its hardware.
+    rgbGroup.visible = Boolean(selected.Fan);
   }
 
   // Keep the tower frame visible around its transparent panels.
@@ -790,6 +823,7 @@ if (parts.caseRear) {
   const fx = $("#fx")?.value || "Breathing";
 
   if (rgbGroup) {
+    const rgbEnabled = $("#rgb")?.checked ?? true;
     rgbGroup.children.forEach((mesh) => {
       if (
         mesh.material?.color &&
@@ -802,6 +836,7 @@ if (parts.caseRear) {
               )
             : color
         );
+        mesh.material.emissiveIntensity = rgbEnabled ? 1.3 : 0;
       }
     });
   }
@@ -833,6 +868,7 @@ if (parts.caseRear) {
     animationId = requestAnimationFrame(animate);
 
     if (rgbGroup) {
+      const rgbEnabled = $("#rgb")?.checked ?? true;
       const fx = $("#fx")?.value || "Breathing";
       const time = performance.now() * 0.001;
 
@@ -841,7 +877,9 @@ if (parts.caseRear) {
       rgbGroup.children.forEach((mesh) => {
         if (mesh.geometry.type !== "TorusGeometry") return;
 
-        if (fx === "Breathing") {
+        if (!rgbEnabled) {
+          mesh.material.emissiveIntensity = 0;
+        } else if (fx === "Breathing") {
           mesh.material.emissiveIntensity =
             0.4 + (Math.sin(time * 2) + 1) * 0.8;
         } else if (fx === "Pulse") {
@@ -866,13 +904,11 @@ if (parts.caseRear) {
   $("#fx")?.addEventListener("change", update3D);
 
   $("#rs")?.addEventListener("click", () => {
-    modelRotationY = 0;
-    modelRotationX = 0;
     cameraYaw = cameraHome.yaw;
     cameraPitch = cameraHome.pitch;
     cameraDistance = cameraHome.distance;
     if (pcGroup) {
-      pcGroup.rotation.set(modelRotationX, modelRotationY, 0);
+      pcGroup.quaternion.identity();
     }
     updateCamera();
   });
