@@ -55,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let cameraDistance = cameraHome.distance;
   let rgbHue = 0;
   let parts = {};
+  let renderedCaseId = null;
 
   const money = (n) =>
     new Intl.NumberFormat("en-IN", {
@@ -586,6 +587,9 @@ canvas.addEventListener("pointercancel", () => {
 
     caseGroup = new THREE.Group();
     pcGroup.add(caseGroup);
+    parts.caseDesign = new THREE.Group();
+    caseGroup.add(parts.caseDesign);
+    parts.caseShellMaterial = caseMaterial;
 
     function box(parent, size, position, material, key) {
       const mesh = new THREE.Mesh(
@@ -655,7 +659,7 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
 
     // Storage and PSU
     box(pcGroup, [0.5, 0.22, 0.5], [0.62, 0.5, -0.35],
-      caseMaterial, "ssd");
+      caseMaterial.clone(), "ssd");
     box(pcGroup, [1.0, 0.55, 1.0], [0.3, 0.38, -0.05],
       darkMaterial, "psu");
 
@@ -697,11 +701,149 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
 });
   }
 
+  function updateCaseDesign(product) {
+    const group = parts.caseDesign;
+    const THREE = window.THREE;
+    if (!group || !THREE) return;
+
+    const caseId = product?.id || null;
+    if (caseId === renderedCaseId) return;
+    renderedCaseId = caseId;
+
+    for (const child of [...group.children]) {
+      group.remove(child);
+      child.geometry?.dispose();
+      if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+      else child.material?.dispose();
+    }
+
+    caseGroup.scale.set(1, 1, 1);
+    parts.caseShellMaterial?.color.set(0x202a34);
+    if (!product) return;
+
+    const designs = {
+      "cabinet-01": { shell: 0x222d36, accent: 0x38e0b0, style: "argb" },
+      "cabinet-02": { shell: 0x303b45, accent: 0x9adfff, style: "vertical-mesh" },
+      "cabinet-03": { shell: 0x202830, accent: 0x51bde0, style: "horizontal-mesh" },
+      "cabinet-04": { shell: 0x252c34, accent: 0x32e4c2, style: "twin-fans" },
+      "cabinet-05": { shell: 0x171d24, accent: 0x42a8ff, style: "triple-fans" },
+      "cabinet-06": { shell: 0x222a32, accent: 0x52d6ff, style: "digital" },
+      "cabinet-07": { shell: 0x30332f, accent: 0xff9e45, style: "angled" },
+      "cabinet-08": { shell: 0x252a31, accent: 0x63bcff, style: "wide-fans" },
+      "cabinet-09": { shell: 0x394149, accent: 0xe5f5ff, style: "compact-glass" },
+      "cabinet-10": { shell: 0x202830, accent: 0x45dfb0, style: "mesh-argb" }
+    };
+    const design = designs[caseId] || designs["cabinet-01"];
+    parts.caseShellMaterial?.color.setHex(design.shell);
+    if (caseId === "cabinet-09") caseGroup.scale.set(0.94, 0.96, 0.94);
+    if (caseId === "cabinet-06") caseGroup.scale.set(1.02, 1, 1);
+
+    const solid = new THREE.MeshStandardMaterial({
+      color: design.accent, metalness: 0.35, roughness: 0.42
+    });
+    const glow = new THREE.MeshStandardMaterial({
+      color: design.accent, emissive: design.accent, emissiveIntensity: 1.4,
+      metalness: 0.15, roughness: 0.28
+    });
+    const dark = new THREE.MeshStandardMaterial({
+      color: 0x10151b, metalness: 0.25, roughness: 0.5
+    });
+
+    const addBox = (size, position, material = solid, rotationZ = 0) => {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+      mesh.position.set(...position);
+      mesh.rotation.z = rotationZ;
+      group.add(mesh);
+      return mesh;
+    };
+    const addFan = (x, y, radius, material = glow) => {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(radius, 0.045, 8, 32), material
+      );
+      ring.position.set(x, y, 0.86);
+      group.add(ring);
+      const hub = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 0.24, radius * 0.24, 0.045, 20), dark
+      );
+      hub.rotation.x = Math.PI / 2;
+      hub.position.set(x, y, 0.865);
+      group.add(hub);
+    };
+    const addSlats = (orientation, count, material = solid) => {
+      for (let i = 0; i < count; i++) {
+        if (orientation === "vertical") {
+          const x = -0.88 + i * (1.76 / (count - 1));
+          addBox([0.025, 3.1, 0.025], [x, 1.8, 0.84], material);
+        } else {
+          const y = 0.35 + i * (2.9 / (count - 1));
+          addBox([1.85, 0.025, 0.025], [0, y, 0.84], material);
+        }
+      }
+    };
+
+    switch (design.style) {
+      case "argb":
+        addFan(-0.43, 2.45, 0.34);
+        addFan(0.43, 1.15, 0.34);
+        addBox([0.05, 2.7, 0.04], [-0.9, 1.8, 0.86], solid, -0.08);
+        break;
+      case "vertical-mesh":
+        addSlats("vertical", 13);
+        addBox([0.08, 3.2, 0.05], [0.82, 1.8, 0.87], dark);
+        break;
+      case "horizontal-mesh":
+        addSlats("horizontal", 15);
+        addBox([1.9, 0.06, 0.05], [0, 0.22, 0.87], glow);
+        break;
+      case "twin-fans":
+        addFan(0, 2.55, 0.48);
+        addFan(0, 1.05, 0.48);
+        break;
+      case "triple-fans":
+        addFan(0, 2.85, 0.32);
+        addFan(0, 1.8, 0.32);
+        addFan(0, 0.75, 0.32);
+        break;
+      case "digital":
+        addFan(-0.48, 1.45, 0.34);
+        addFan(0.35, 1.45, 0.34);
+        addBox([0.62, 0.25, 0.08], [0.45, 2.95, 0.88], dark);
+        addBox([0.42, 0.035, 0.025], [0.45, 2.95, 0.93], glow);
+        addSlats("vertical", 7, dark);
+        break;
+      case "angled":
+        for (let i = 0; i < 7; i++) {
+          const x = -0.72 + i * 0.24;
+          addBox([0.055, 3.15, 0.035], [x, 1.8, 0.85], i === 0 ? glow : solid, 0.12);
+        }
+        break;
+      case "wide-fans":
+        addFan(-0.48, 1.8, 0.43);
+        addFan(0.48, 1.8, 0.43);
+        break;
+      case "compact-glass":
+        caseGroup.scale.set(0.94, 0.96, 0.94);
+        addBox([1.65, 2.75, 0.035], [0, 1.85, 0.84], dark);
+        addBox([0.035, 2.8, 0.04], [-0.83, 1.85, 0.87], solid);
+        addBox([0.035, 2.8, 0.04], [0.83, 1.85, 0.87], solid);
+        addBox([1.68, 0.035, 0.04], [0, 0.45, 0.87], solid);
+        addBox([1.68, 0.035, 0.04], [0, 3.25, 0.87], solid);
+        break;
+      case "mesh-argb":
+        addSlats("vertical", 9, dark);
+        addFan(0, 2.75, 0.28);
+        addFan(0, 1.8, 0.28);
+        addFan(0, 0.85, 0.28);
+        break;
+    }
+  }
+
 
 function update3D() {
   if (!pcGroup) return;
 
   const exploded = Number($("#ex")?.value || 0) / 100;
+  updateCaseDesign(selected.Cabinet);
 
   // Keep the interior empty until the matching part is selected in the catalog.
   const partVisibility = {
