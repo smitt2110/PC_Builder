@@ -6,16 +6,32 @@
 <button id="bSaved">Saved Builds</button><button class="p" id="bBuild">Build for Me</button></nav>
 <main>
 <div class="col" id="left"></div>
-<div id="vp"><canvas id="cv"></canvas><div id="info"></div>
+<div id="vp"><canvas id="cv"></canvas><div id="case-fallback" aria-label="PC case preview">
+  <div class="fallback-tower">
+    <div class="fallback-interior">
+      <div class="fallback-board"></div><div class="fallback-gpu"></div>
+      <div class="fallback-ram"></div><div class="fallback-fans"><i></i><i></i><i></i></div>
+    </div>
+    <div class="fallback-glass"></div><div class="fallback-frame"></div>
+  </div>
+</div><div id="info"></div>
 <div id="bar">
 <label>Exploded <input type="range" id="ex" min="0" max="100" value="0"></label>
 <label><input type="checkbox" id="rgb" checked> RGB</label><input type="color" id="rc" value="#38e0b0">
 <label>FX <select id="fx" class="sel" style="width:auto;margin:0"><option>Static</option><option selected>Breathing</option><option>Rainbow</option><option>Pulse</option></select></label>
-<label><input type="checkbox" id="hc"> Hide case</label><button id="rs">Reset cam</button><button id="shot">Screenshot</button></div></div>
+<button id="rs">Reset cam</button><button id="shot">Screenshot</button></div></div>
 <div class="col" id="right"></div>
-</main><div id="toast"></div>
+</main><dialog id="build-dialog" class="build-dialog" aria-labelledby="build-dialog-title">
+  <h2 id="build-dialog-title">Build a PC for your budget</h2>
+  <p>Enter your maximum budget in Indian rupees. I’ll select a compatible set of parts from the catalog.</p>
+  <label for="build-budget">Budget (₹)</label>
+  <input id="build-budget" type="number" min="1" step="500" inputmode="numeric" placeholder="e.g. 100000" required>
+  <p id="build-budget-error" class="build-error" role="alert"></p>
+  <p class="est">The build includes a motherboard matched to the selected CPU and RAM. Prices are catalog snapshots, not live quotes.</p>
+  <div class="dialog-actions"><button id="build-cancel" type="button">Cancel</button><button id="build-generate" type="button" class="p">Build my PC</button></div>
+</dialog><div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="components_db.js"></script>
-<script src="app.js"></script>
+<script src="components_db.js?v=camera-reset-20261021"></script>
+<script src="app.js?v=camera-reset-20261021"></script>
 </body>
 </html>

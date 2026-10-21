@@ -26,3 +26,19 @@ h3{margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;co
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--a);color:#04140f;padding:8px 16px;border-radius:8px;font-weight:600;display:none;z-index:9}
 .est{font-size:11px;color:var(--m)}
 @media(max-width:1000px){main{grid-template-columns:1fr;height:auto}#vp{height:60vh;order:-1}nav .hide{display:none}}
+
+#case-fallback{display:none;position:absolute;inset:0 0 70px;place-items:center;perspective:900px;pointer-events:none;z-index:1}
+.fallback-tower{position:relative;width:218px;height:360px;border:8px solid #52616c;border-radius:14px;background:linear-gradient(110deg,#18232c 0 12%,#0a0f14 13% 100%);box-shadow:24px 24px 48px #0009, inset 0 0 0 3px #111820;transform:rotateY(-18deg) rotateX(2deg)}
+.fallback-interior{position:absolute;inset:24px 20px;background:linear-gradient(135deg,#1b2932,#0b1117);border:1px solid #61717c;border-radius:6px}
+.fallback-board{position:absolute;left:38px;top:38px;width:92px;height:190px;background:#172b30;border:2px solid #315349;border-radius:4px}
+.fallback-gpu{position:absolute;left:27px;top:157px;width:142px;height:42px;border:3px solid #596a75;border-radius:7px;background:linear-gradient(#25313a,#121a20);box-shadow:0 0 14px #38e0b044}
+.fallback-ram{position:absolute;left:43px;top:48px;width:12px;height:86px;background:#38e0b0;border-radius:3px;box-shadow:18px 0 #167c68}
+.fallback-fans{position:absolute;right:12px;top:23px;display:grid;gap:9px}
+.fallback-fans i{width:48px;height:48px;border:5px solid #38e0b0;border-radius:50%;box-shadow:inset 0 0 0 9px #17232b,0 0 12px #38e0b066}
+.fallback-glass{position:absolute;inset:0;border:2px solid #a3c7d044;border-radius:6px;background:linear-gradient(115deg,#80b4c018,#8dc6d005 45%,#86bdcf22);}
+.fallback-frame{position:absolute;inset:-8px;border:8px solid #52616c;border-radius:14px;box-shadow:inset 0 0 0 2px #83939c55}
+.build-dialog{width:min(440px,calc(100vw - 32px));border:1px solid var(--b);border-radius:16px;background:var(--s);color:var(--t);padding:22px;box-shadow:0 20px 70px #0009}
+.build-dialog::backdrop{background:#05080dcc;backdrop-filter:blur(4px)}
+.build-dialog h2{margin:0 0 8px;font-size:18px}.build-dialog>p{color:var(--m);margin:8px 0 14px}
+.build-dialog label{display:block;margin:12px 0 6px;font-weight:600}.build-dialog input{width:100%;padding:12px;border:1px solid var(--b);border-radius:8px;background:var(--s2);color:var(--t);font:inherit}
+.build-error{min-height:1.4em;color:var(--e);margin:4px 0!important}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
