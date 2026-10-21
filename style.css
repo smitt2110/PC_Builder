@@ -40,5 +40,5 @@ h3{margin:0 0 10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;co
 .build-dialog{width:min(440px,calc(100vw - 32px));border:1px solid var(--b);border-radius:16px;background:var(--s);color:var(--t);padding:22px;box-shadow:0 20px 70px #0009}
 .build-dialog::backdrop{background:#05080dcc;backdrop-filter:blur(4px)}
 .build-dialog h2{margin:0 0 8px;font-size:18px}.build-dialog>p{color:var(--m);margin:8px 0 14px}
-.build-dialog label{display:block;margin:12px 0 6px;font-weight:600}.build-dialog input{width:100%;padding:12px;border:1px solid var(--b);border-radius:8px;background:var(--s2);color:var(--t);font:inherit}
+.build-dialog label{display:block;margin:12px 0 6px;font-weight:600}.build-dialog input,.build-dialog select{width:100%;padding:12px;border:1px solid var(--b);border-radius:8px;background:var(--s2);color:var(--t);font:inherit}
 .build-error{min-height:1.4em;color:var(--e);margin:4px 0!important}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}

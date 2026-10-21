@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const selected = {};
   let activeCategory = "GPU";
   let selectedId = null;
+  let fanCount = 1;
   let toastTimer;
   let renderer, scene, camera, pcGroup, caseGroup, rgbGroup;
   let animationId;
@@ -66,6 +67,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const price = (p) =>
     Number(p.price_inr_snapshot ?? p.price ?? p.price_inr ?? 0);
+
+  const isFanPack = (product) => /3\s*[- ]?in\s*[- ]?1|3\s*[- ]?pack/i
+    .test(`${product?.name || ""} ${product?.specifications || ""}`);
+  const fanUnitPrice = (product) => price(product) / (isFanPack(product) ? 3 : 1);
+  const componentTotal = (category, product) => category === "Fan"
+    ? fanUnitPrice(product) * fanCount
+    : price(product);
 
   const categoryOf = (p) => {
     const value = String(p.category || "").toLowerCase();
@@ -108,14 +116,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // LEFT PANEL
   function renderLeft() {
-    const all = categories.reduce(
+    const visibleCategories = categories.filter(([id]) => id !== "Fan");
+    const all = visibleCategories.reduce(
       (sum, c) => sum + getProducts(c[0]).length, 0
     );
 
     left.innerHTML = `
       <h3>Components</h3>
       <p class="est">${all} components in database</p>
-      ${categories.map(([id, label]) => `
+      ${visibleCategories.map(([id, label]) => `
         <button class="cat ${activeCategory === id ? "on" : ""}"
                 data-category="${id}">
           <span class="n">${esc(label)}</span>
@@ -181,6 +190,10 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("click", () => {
         const product = products.find(item => String(item.id) === button.dataset.product);
         if (!product) return;
+        if (categoryOf(product) === "Fan") {
+          openFanDialog(product);
+          return;
+        }
         selected[categoryOf(product)] = product;
         selectedId = String(product.id);
         renderLeft();
@@ -192,7 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function renderRight() {
     const items = Object.entries(selected);
-    const total = items.reduce((sum, [, product]) => sum + price(product), 0);
+    const total = items.reduce((sum, [category, product]) => sum + componentTotal(category, product), 0);
     right.innerHTML = `
       <h3>Your PC Build</h3>
       <div class="row"><span>Components</span><strong>${items.length}</strong></div>
@@ -200,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="bar"><i style="width:${items.length / categories.length * 100}%"></i></div>
       <h3 style="margin-top:18px">Selected Parts</h3>
       ${items.length ? items.map(([category, product]) => `
-        <div class="item"><div><strong>${esc(nameOf(product))}</strong><div class="sp">${esc(category)} · ${money(price(product))}</div></div><button data-remove="${esc(category)}" title="Remove">×</button></div>
+        <div class="item"><div><strong>${esc(nameOf(product))}${category === "Fan" ? ` × ${fanCount}` : ""}</strong><div class="sp">${esc(category)} · ${money(componentTotal(category, product))}</div></div><button data-remove="${esc(category)}" title="Remove">×</button></div>
       `).join("") : `<p class="est">Choose components from the left panel.</p>`}
       <hr style="border-color:var(--b);margin:14px 0">
       <div class="row"><span>Estimated total</span><strong class="ok">${money(total)}</strong></div>
@@ -215,7 +228,9 @@ document.addEventListener("DOMContentLoaded", () => {
       <div id="fps-result" class="fps-result"><p class="est">Choose your settings and estimate FPS.</p></div>
     `;
     right.querySelectorAll("[data-remove]").forEach(button => button.addEventListener("click", () => {
-      delete selected[button.dataset.remove]; selectedId = null;
+      delete selected[button.dataset.remove];
+      if (button.dataset.remove === "Fan") fanCount = 1;
+      selectedId = null;
       renderLeft(); renderRight(); update3D();
     }));
     $("#fps-calculate").addEventListener("click", calculateFPS);
@@ -224,11 +239,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function clearBuild() {
     Object.keys(selected).forEach(key => delete selected[key]);
+    fanCount = 1;
     selectedId = null;
     renderLeft();
     renderRight();
     update3D();
     notify("Build cleared; default case restored");
+  }
+
+  function openFanDialog(product = selected.Fan || getProducts("Fan")[0]) {
+    if (!product) return;
+    const model = $("#fan-model");
+    model.value = String(product.id);
+    $("#fan-quantity").value = String(selected.Fan ? fanCount : 1);
+    updateFanPriceNote();
+    $("#fan-dialog").showModal();
+  }
+
+  function updateFanPriceNote() {
+    const model = products.find(product => String(product.id) === $("#fan-model").value);
+    const count = Number($("#fan-quantity").value) || 1;
+    if (!model) return;
+    const packNote = isFanPack(model) ? " (estimated per fan from the 3-pack price)" : "";
+    $("#fan-price-note").textContent = `Estimated total for ${count} fan${count === 1 ? "" : "s"}: ${money(fanUnitPrice(model) * count)}${packNote}.`;
   }
 
   const fpsGameBase = { "Cyberpunk 2077":48,"GTA V Enhanced":75,"Red Dead Redemption 2":58,"Hogwarts Legacy":50,"Forza Horizon 5":80,"Call of Duty: Warzone":75,"Counter-Strike 2":180,"Valorant":240,"Fortnite":100,"Black Myth: Wukong":38 };
@@ -633,25 +666,46 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
     box(pcGroup, [1.0, 0.55, 1.0], [0.3, 0.38, -0.05],
       darkMaterial, "psu");
 
-    // Front RGB fans
+    // Three front fan assemblies; selection controls which ones are installed.
     rgbGroup = new THREE.Group();
     pcGroup.add(rgbGroup);
-
+    rgbGroup.userData.rotors = [];
     for (let i = 0; i < 3; i++) {
-      const fan = new THREE.Mesh(
+      const assembly = new THREE.Group();
+      assembly.position.set(-0.65, 0.85 + i * 0.85, 0.83);
+      rgbGroup.add(assembly);
+
+      const frame = new THREE.Mesh(
         new THREE.TorusGeometry(0.31, 0.055, 8, 32),
         accentMaterial.clone()
       );
-      fan.position.set(-0.65, 0.85 + i * 0.85, 0.83);
-      rgbGroup.add(fan);
+      assembly.add(frame);
+
+      const rotor = new THREE.Group();
+      rotor.userData.isFanRotor = true;
+      assembly.add(rotor);
+      rgbGroup.userData.rotors.push(rotor);
+
+      const bladeShape = new THREE.Shape();
+      bladeShape.moveTo(0.055, 0.035);
+      bladeShape.bezierCurveTo(0.12, 0.12, 0.27, 0.18, 0.265, 0.04);
+      bladeShape.bezierCurveTo(0.255, -0.015, 0.16, -0.035, 0.07, -0.025);
+      bladeShape.bezierCurveTo(0.04, -0.01, 0.035, 0.015, 0.055, 0.035);
+      bladeShape.closePath();
+      const bladeGeometry = new THREE.ShapeGeometry(bladeShape);
+      for (let bladeIndex = 0; bladeIndex < 5; bladeIndex++) {
+        const blade = new THREE.Mesh(bladeGeometry, accentMaterial.clone());
+        blade.rotation.z = (Math.PI * 2 * bladeIndex) / 5;
+        blade.userData.rgbBlade = true;
+        rotor.add(blade);
+      }
 
       const hub = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.1, 0.06, 20),
+        new THREE.CylinderGeometry(0.085, 0.085, 0.08, 20),
         darkMaterial
       );
       hub.rotation.x = Math.PI / 2;
-      hub.position.set(-0.65, 0.85 + i * 0.85, 0.83);
-      rgbGroup.add(hub);
+      rotor.add(hub);
     }
 
     // Floor shadow-style base
@@ -903,8 +957,11 @@ if (parts.caseRear) {
       exploded * 3.5
     );
 
-    // The RGB toggle controls lighting only; selecting a fan always shows its hardware.
-    rgbGroup.visible = Boolean(selected.Fan);
+    rgbGroup.children.forEach((assembly, index) => {
+      const mountVisible = fanCount === 3 ||
+        (fanCount === 2 ? index !== 1 : index === 1);
+      assembly.visible = Boolean(selected.Fan) && mountVisible;
+    });
   }
 
   // Keep the tower frame visible around its transparent panels.
@@ -918,11 +975,8 @@ if (parts.caseRear) {
 
   if (rgbGroup) {
     const rgbEnabled = $("#rgb")?.checked ?? true;
-    rgbGroup.children.forEach((mesh) => {
-      if (
-        mesh.material?.color &&
-        mesh.geometry.type === "TorusGeometry"
-      ) {
+    rgbGroup.traverse((mesh) => {
+      if (mesh.material?.color && (mesh.geometry?.type === "TorusGeometry" || mesh.userData.rgbBlade)) {
         mesh.material.color.set(
           fx === "Rainbow"
             ? new window.THREE.Color().setHSL(
@@ -958,19 +1012,27 @@ if (parts.caseRear) {
     camera.updateProjectionMatrix();
   }
 
+  let previousFrameTime = 0;
   function animate() {
     animationId = requestAnimationFrame(animate);
+    const now = performance.now();
+    const deltaSeconds = previousFrameTime
+      ? Math.min(0.05, (now - previousFrameTime) / 1000)
+      : 0;
+    previousFrameTime = now;
 
     if (rgbGroup) {
       const rgbEnabled = $("#rgb")?.checked ?? true;
       const fx = $("#fx")?.value || "Breathing";
-      const time = performance.now() * 0.001;
+      const time = now * 0.001;
 
       if (fx === "Rainbow") rgbHue = (time * 0.12) % 1;
 
-      rgbGroup.children.forEach((mesh) => {
-        if (mesh.geometry.type !== "TorusGeometry") return;
-
+      rgbGroup.userData.rotors?.forEach(rotor => {
+        rotor.rotation.z += 4.5 * deltaSeconds;
+      });
+      rgbGroup.traverse((mesh) => {
+        if (!mesh.material || !(mesh.geometry?.type === "TorusGeometry" || mesh.userData.rgbBlade)) return;
         if (!rgbEnabled) {
           mesh.material.emissiveIntensity = 0;
         } else if (fx === "Breathing") {
@@ -1019,6 +1081,27 @@ if (parts.caseRear) {
   });
 
   const buildDialog = $("#build-dialog");
+  const fanDialog = $("#fan-dialog");
+  $("#fan-model").innerHTML = getProducts("Fan").map(product =>
+    `<option value="${esc(product.id)}">${esc(nameOf(product))} · ${money(price(product))}</option>`
+  ).join("");
+  $("#bFans")?.addEventListener("click", () => openFanDialog());
+  $("#fan-model")?.addEventListener("change", updateFanPriceNote);
+  $("#fan-quantity")?.addEventListener("change", updateFanPriceNote);
+  $("#fan-cancel")?.addEventListener("click", () => fanDialog.close());
+  $("#fan-add")?.addEventListener("click", () => {
+    const product = products.find(item => String(item.id) === $("#fan-model").value);
+    const count = Number($("#fan-quantity").value);
+    if (!product || !Number.isInteger(count) || count < 1 || count > 3) return;
+    selected.Fan = product;
+    fanCount = count;
+    selectedId = String(product.id);
+    renderLeft();
+    renderRight();
+    update3D();
+    fanDialog.close();
+    notify(`${count} ${count === 1 ? "fan" : "fans"} added to your PC`);
+  });
   $("#bClear")?.addEventListener("click", clearBuild);
   $("#bBuild")?.addEventListener("click", () => {
     $("#build-budget").value = "";
@@ -1050,6 +1133,7 @@ if (parts.caseRear) {
     }
     Object.keys(selected).forEach(key => delete selected[key]);
     Object.assign(selected, build.picks);
+    fanCount = isFanPack(build.picks.Fan) ? 3 : 1;
     activeCategory = "GPU";
     selectedId = null;
     renderLeft();

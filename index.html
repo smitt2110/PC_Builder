@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="style.css"></head><body>
 <nav><div class="logo">CORE<b>FORGE</b> 3D</div><span class="tag hide">Build it. See it. Power it.</span><div class="sp"></div>
-<button id="bClear">Clear Build</button><button class="p" id="bBuild">Build for Me</button></nav>
+<button id="bClear">Clear Build</button><button id="bFans">Add Fans</button><button class="p" id="bBuild">Build for Me</button></nav>
 <main>
 <div class="col" id="left"></div>
 <div id="vp"><canvas id="cv"></canvas><div id="case-fallback" aria-label="PC case preview">
@@ -29,9 +29,19 @@
   <p id="build-budget-error" class="build-error" role="alert"></p>
   <p class="est">The build includes a motherboard matched to the selected CPU and RAM. Prices are catalog snapshots, not live quotes.</p>
   <div class="dialog-actions"><button id="build-cancel" type="button">Cancel</button><button id="build-generate" type="button" class="p">Build my PC</button></div>
+</dialog>
+<dialog id="fan-dialog" class="build-dialog" aria-labelledby="fan-dialog-title">
+  <h2 id="fan-dialog-title">Add Cooling Fans</h2>
+  <p>Choose a fan model and how many fans to install. You can add up to 3.</p>
+  <label for="fan-model">Fan model</label>
+  <select id="fan-model" class="sel"></select>
+  <label for="fan-quantity">Number of fans</label>
+  <select id="fan-quantity" class="sel"><option value="1">1 fan</option><option value="2">2 fans</option><option value="3">3 fans</option></select>
+  <p id="fan-price-note" class="est"></p>
+  <div class="dialog-actions"><button id="fan-cancel" type="button">Cancel</button><button id="fan-add" type="button" class="p">Add to PC</button></div>
 </dialog><div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="components_db.js?v=case-design-no-fans-20261021"></script>
-<script src="app.js?v=case-design-no-fans-20261021"></script>
+<script src="components_db.js?v=hide-left-fan-category-20261021"></script>
+<script src="app.js?v=hide-left-fan-category-20261021"></script>
 </body>
 </html>
