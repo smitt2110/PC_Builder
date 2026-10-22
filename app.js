@@ -485,8 +485,8 @@ document.addEventListener("DOMContentLoaded", () => {
         })
       );
       floor.rotation.x = -Math.PI / 2;
-      // The case panels reach y=0 at their bottom edge; align the floor there.
-      floor.position.y = 0;
+      // The case panels reach y=0; place the floor a hair below to avoid z-fighting.
+      floor.position.y = -0.005;
       scene.add(floor);
 
       pcGroup = new THREE.Group();
@@ -541,7 +541,7 @@ canvas.addEventListener("pointercancel", () => {
       canvas.addEventListener("wheel", (event) => {
         event.preventDefault();
         cameraDistance = Math.max(
-          4, Math.min(12, cameraDistance + event.deltaY * 0.008)
+          4, Math.min(20, cameraDistance + event.deltaY * 0.008)
         );
         updateCamera();
       }, { passive: false });
@@ -618,8 +618,8 @@ function makePanel(name, size, position, material) {
   parts[name] = panel;
 }
 
-// Left and right panels
-makePanel("caseLeft", [0.06, 3.6, 1.5], [-1.07, 1.8, 0], glassMaterial);
+// Solid steel on the far side, tinted glass on the viewer-facing side.
+makePanel("caseLeft", [0.06, 3.6, 1.5], [-1.07, 1.8, 0], caseMaterial);
 makePanel("caseRight", [0.06, 3.6, 1.5], [1.07, 1.8, 0], glassMaterial);
 
 // Top and bottom panels
@@ -743,21 +743,20 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
     if (!product) return;
 
     const designs = {
-      "cabinet-01": { shell: 0x222d36, accent: 0x38e0b0, style: "argb" },
-      "cabinet-02": { shell: 0x303b45, accent: 0x9adfff, style: "vertical-mesh" },
-      "cabinet-03": { shell: 0x202830, accent: 0x51bde0, style: "horizontal-mesh" },
-      "cabinet-04": { shell: 0x252c34, accent: 0x32e4c2, style: "twin-fans" },
-      "cabinet-05": { shell: 0x171d24, accent: 0x42a8ff, style: "triple-fans" },
-      "cabinet-06": { shell: 0x222a32, accent: 0x52d6ff, style: "digital" },
-      "cabinet-07": { shell: 0x30332f, accent: 0xff9e45, style: "angled" },
-      "cabinet-08": { shell: 0x252a31, accent: 0x63bcff, style: "wide-fans" },
-      "cabinet-09": { shell: 0x394149, accent: 0xe5f5ff, style: "compact-glass" },
-      "cabinet-10": { shell: 0x202830, accent: 0x45dfb0, style: "mesh-argb" }
+      "cabinet-01": { shell: 0x222a32, accent: 0x38e0b0, style: "clean-glass", scale: [1, 1, 1] },
+      "cabinet-02": { shell: 0x30363d, accent: 0x9adfff, style: "vertical-mesh", scale: [0.94, 1, 1] },
+      "cabinet-03": { shell: 0x202830, accent: 0x51bde0, style: "horizontal-mesh", scale: [1, 1, 1] },
+      "cabinet-04": { shell: 0x252c34, accent: 0x32e4c2, style: "split-intake", scale: [1.06, 1, 1] },
+      "cabinet-05": { shell: 0x171d24, accent: 0x42a8ff, style: "micro-mesh", scale: [1.08, 1, 1] },
+      "cabinet-06": { shell: 0x222a32, accent: 0x52d6ff, style: "digital", scale: [1.02, 1, 1] },
+      "cabinet-07": { shell: 0x30332f, accent: 0xff9e45, style: "retro-bays", scale: [0.98, 1, 1] },
+      "cabinet-08": { shell: 0x252a31, accent: 0x63bcff, style: "dual-zone", scale: [1.04, 1, 1] },
+      "cabinet-09": { shell: 0x394149, accent: 0xe5f5ff, style: "compact-glass", scale: [0.88, 0.92, 0.9] },
+      "cabinet-10": { shell: 0x202830, accent: 0x45dfb0, style: "angular-mesh", scale: [1, 1, 1] }
     };
     const design = designs[caseId] || designs["cabinet-01"];
     parts.caseShellMaterial?.color.setHex(design.shell);
-    if (caseId === "cabinet-09") caseGroup.scale.set(0.94, 0.96, 0.94);
-    if (caseId === "cabinet-06") caseGroup.scale.set(1.02, 1, 1);
+    caseGroup.scale.set(...design.scale);
 
     const solid = new THREE.MeshStandardMaterial({
       color: design.accent, metalness: 0.35, roughness: 0.42
@@ -768,6 +767,9 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
     });
     const dark = new THREE.MeshStandardMaterial({
       color: 0x10151b, metalness: 0.25, roughness: 0.5
+    });
+    const meshDark = new THREE.MeshStandardMaterial({
+      color: 0x11171d, metalness: 0.15, roughness: 0.82
     });
 
     const addBox = (size, position, material = solid, rotationZ = 0) => {
@@ -789,54 +791,93 @@ makePanel("caseRear", [2.2, 3.6, 0.06], [0, 1.8, -0.72], caseMaterial);
       }
     };
 
+    const addTopVents = (count = 12) => {
+      for (let i = 0; i < count; i++) {
+        const x = -0.78 + i * (1.56 / (count - 1));
+        addBox([0.026, 0.016, 0.56], [x, 3.608, -0.12], meshDark);
+      }
+    };
+    const addFeet = () => {
+      for (const x of [-0.78, 0.78]) {
+        for (const z of [-0.48, 0.48]) {
+          addBox([0.42, 0.09, 0.24], [x, 0.035, z], dark);
+        }
+      }
+    };
+    const addFrontIO = () => {
+      // Power switch, status light, and USB/audio sockets near the top edge.
+      addBox([0.28, 0.055, 0.025], [0.58, 3.39, 0.79], dark);
+      addBox([0.07, 0.07, 0.035], [0.78, 3.39, 0.81], glow);
+      addBox([0.09, 0.045, 0.025], [0.30, 3.39, 0.79], dark);
+      addBox([0.09, 0.045, 0.025], [0.43, 3.39, 0.79], dark);
+    };
+
+    addFeet();
+    addTopVents(design.style === "compact-glass" ? 8 : 12);
+    addFrontIO();
+
     switch (design.style) {
-      case "argb":
-        addBox([0.05, 2.7, 0.04], [-0.9, 1.8, 0.86], solid, -0.08);
-        addBox([0.08, 0.08, 0.04], [-0.66, 0.42, 0.86], glow);
-        addBox([0.08, 0.08, 0.04], [0.66, 3.18, 0.86], glow);
+      case "clean-glass":
+        addBox([0.035, 3.18, 0.04], [-0.96, 1.82, 0.82], solid);
+        addBox([0.035, 3.18, 0.04], [0.96, 1.82, 0.82], solid);
+        addBox([1.92, 0.035, 0.04], [0, 0.22, 0.82], solid);
+        addBox([1.92, 0.035, 0.04], [0, 3.42, 0.82], solid);
+        addBox([0.035, 2.7, 0.04], [-0.96, 1.82, 0.86], glow);
         break;
       case "vertical-mesh":
-        addSlats("vertical", 13);
-        addBox([0.08, 3.2, 0.05], [0.82, 1.8, 0.87], dark);
+        addSlats("vertical", 25, meshDark);
+        addBox([0.055, 3.2, 0.05], [0.9, 1.8, 0.87], solid);
+        addBox([0.055, 3.2, 0.05], [-0.9, 1.8, 0.87], solid);
         break;
       case "horizontal-mesh":
-        addSlats("horizontal", 15);
-        addBox([1.9, 0.06, 0.05], [0, 0.22, 0.87], glow);
+        addSlats("horizontal", 24, meshDark);
+        addBox([1.92, 0.10, 0.06], [0, 0.28, 0.87], solid);
+        addBox([1.92, 0.06, 0.06], [0, 0.40, 0.87], glow);
         break;
-      case "twin-fans":
-        addSlats("horizontal", 9, solid);
-        addBox([0.09, 3.1, 0.04], [0.82, 1.8, 0.87], glow);
+      case "split-intake":
+        addBox([0.94, 3.22, 0.06], [-0.49, 1.8, 0.84], meshDark);
+        addSlats("vertical", 17, solid);
+        addBox([0.08, 3.1, 0.05], [0.88, 1.8, 0.89], glow);
+        addBox([1.88, 0.08, 0.08], [0, 0.3, 0.88], dark);
         break;
-      case "triple-fans":
-        addSlats("vertical", 11, solid);
-        addBox([1.9, 0.07, 0.04], [0, 1.8, 0.87], glow);
+      case "micro-mesh":
+        addBox([1.98, 3.28, 0.035], [0, 1.8, 0.78], meshDark);
+        addSlats("vertical", 31, dark);
+        addBox([1.96, 0.08, 0.05], [0, 0.16, 0.84], solid);
         break;
       case "digital":
-        addBox([0.62, 0.25, 0.08], [0.45, 2.95, 0.88], dark);
-        addBox([0.42, 0.035, 0.025], [0.45, 2.95, 0.93], glow);
-        addSlats("vertical", 7, dark);
+        addSlats("vertical", 23, meshDark);
+        addBox([0.62, 0.31, 0.08], [0.48, 3.0, 0.88], dark);
+        addBox([0.43, 0.20, 0.025], [0.48, 3.0, 0.93], glow);
+        addBox([0.36, 0.035, 0.025], [0.48, 2.96, 0.95], dark);
         break;
-      case "angled":
-        for (let i = 0; i < 7; i++) {
-          const x = -0.72 + i * 0.24;
-          addBox([0.055, 3.15, 0.035], [x, 1.8, 0.85], i === 0 ? glow : solid, 0.12);
+      case "retro-bays":
+        addBox([1.98, 3.28, 0.035], [0, 1.8, 0.78], meshDark);
+        for (let i = 0; i < 3; i++) {
+          addBox([0.72, 0.12, 0.055], [0, 3.03 - i * 0.19, 0.84], dark);
+          addBox([0.055, 0.035, 0.018], [-0.27, 3.03 - i * 0.19, 0.872], glow);
         }
+        addSlats("vertical", 17, solid);
         break;
-      case "wide-fans":
-        addSlats("horizontal", 7, solid);
-        addBox([0.08, 2.8, 0.04], [-0.78, 1.8, 0.87], glow);
+      case "dual-zone":
+        addSlats("horizontal", 21, meshDark);
+        addBox([1.92, 0.12, 0.06], [0, 1.15, 0.87], solid);
+        addBox([1.92, 0.06, 0.06], [0, 1.24, 0.89], glow);
+        addBox([1.92, 0.16, 0.06], [0, 0.22, 0.87], dark);
         break;
       case "compact-glass":
-        caseGroup.scale.set(0.94, 0.96, 0.94);
-        addBox([1.65, 2.75, 0.035], [0, 1.85, 0.84], dark);
-        addBox([0.035, 2.8, 0.04], [-0.83, 1.85, 0.87], solid);
-        addBox([0.035, 2.8, 0.04], [0.83, 1.85, 0.87], solid);
-        addBox([1.68, 0.035, 0.04], [0, 0.45, 0.87], solid);
-        addBox([1.68, 0.035, 0.04], [0, 3.25, 0.87], solid);
+        addBox([1.70, 2.82, 0.035], [0, 1.84, 0.79], dark);
+        addBox([0.06, 2.90, 0.05], [-0.83, 1.84, 0.84], solid);
+        addBox([0.06, 2.90, 0.05], [0.83, 1.84, 0.84], solid);
+        addBox([1.72, 0.06, 0.05], [0, 0.40, 0.84], solid);
+        addBox([1.72, 0.06, 0.05], [0, 3.28, 0.84], solid);
         break;
-      case "mesh-argb":
-        addSlats("vertical", 9, dark);
-        addBox([1.9, 0.06, 0.04], [0, 1.8, 0.87], glow);
+      case "angular-mesh":
+        addSlats("vertical", 21, meshDark);
+        for (let i = 0; i < 5; i++) {
+          addBox([0.055, 2.8, 0.04], [-0.68 + i * 0.34, 1.85, 0.88], i === 0 ? glow : solid, i % 2 ? 0.08 : -0.08);
+        }
+        addBox([1.9, 0.07, 0.05], [0, 0.22, 0.87], dark);
         break;
     }
   }
