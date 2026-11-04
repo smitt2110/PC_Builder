@@ -98,3 +98,4 @@ window.PC_COMPONENTS_DATABASE = {
     {"id":"motherboard-10","category":"Motherboard","brand":"GIGABYTE","name":"Z890 Gaming X WiFi7","model":"Z890-GAMING-X-WIFI7","price_inr_snapshot":28900,"currency":"INR","price_checked_at_ist":"2026-10-21T00:00+05:30","price_status":"snapshot_not_live","product_url":"","source_url":"https://www.mdcomputers.in/catalog/motherboard/intel-chipset-motherboard/z890-motherboard","image_search_query":"Gigabyte Z890 Gaming X WiFi7 motherboard","specifications":"Intel Z890, ATX, Wi-Fi 7, DDR5","compatibility":"LGA1851; DDR5; supports Intel Core Ultra Series 2"}
   ]
 };
+//end
